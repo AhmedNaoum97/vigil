@@ -1,0 +1,36 @@
+from fastapi import FastAPI, Depends, HTTPException
+from sqlalchemy.orm import Session
+from pydantic import BaseModel, EmailStr
+
+from models.database import get_db
+from models.models import User
+from api.auth import hash_password
+
+app = FastAPI(title="Vigil")
+
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+@app.get("/")
+def root():
+    return {"status": "Vigil API is running"}
+
+
+@app.post("/auth/register")
+def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+    existing_user = db.query(User).filter(User.email == payload.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    new_user = User(
+        email=payload.email,
+        password_hash=hash_password(payload.password),
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return {"id": new_user.id, "email": new_user.email}
