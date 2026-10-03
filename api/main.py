@@ -4,7 +4,7 @@ from pydantic import BaseModel, EmailStr
 
 from models.database import get_db
 from models.models import User
-from api.auth import hash_password, verify_password, create_access_token
+from api.auth import hash_password, verify_password, create_access_token, get_current_user
 
 app = FastAPI(title="Vigil")
 
@@ -49,3 +49,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
     token = create_access_token({"sub": str(user.id)})
     return {"access_token": token, "token_type": "bearer"}
+
+@app.get("/auth/me")
+def me(current_user: User = Depends(get_current_user)):
+    return {"id": current_user.id, "email": current_user.email}
