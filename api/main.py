@@ -81,3 +81,43 @@ def create_scan(
     db.commit()
     db.refresh(job)
     return {"job_id": job.id, "status": job.status}
+
+@app.get("/scans")
+def list_scans(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    jobs = (
+        db.query(ScanJob)
+        .filter(ScanJob.user_id == current_user.id)
+        .order_by(ScanJob.created_at.desc())
+        .all()
+    )
+    return [
+        {"job_id": job.id, "target": job.target, "status": job.status, "created_at": job.created_at}
+        for job in jobs
+    ]
+
+
+@app.get("/scans/{job_id}")
+def get_scan(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    job = (
+        db.query(ScanJob)
+        .filter(ScanJob.id == job_id, ScanJob.user_id == current_user.id)
+        .first()
+    )
+    if not job:
+        raise HTTPException(status_code=404, detail="Scan not found")
+
+    return {
+        "job_id": job.id,
+        "target": job.target,
+        "status": job.status,
+        "created_at": job.created_at,
+        "started_at": job.started_at,
+        "completed_at": job.completed_at,
+    }
